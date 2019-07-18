@@ -33,13 +33,18 @@
     <body>
         <div class="container-fluid" id="submission">
             <!-- Data Notice -->
-            <div class="alert alert-warning alert-dismissible">
+            <!-- <div class="alert alert-warning alert-dismissible mt-2">
                 <button type="button" class="close" data-dismiss="alert">&times;</button>
                 <strong>Data Notice:</strong> Your data is never saved and is only analyzed on this device.
-            </div>
+            </div> -->
 
-            <!-- Page Header -->
-            <h1 class="page-header" style="text-align: center">UMBC Meal Breakdown</h1><br>
+            <div class="jumbotron mt-2 mb-2" style="padding: 2rem;">
+                <!-- Page Header -->
+                <h1 class="page-header text-center pt-0">UMBC Meal Breakdown</h1>
+                <p class="mb-1">
+                    Analyze where and when you eat. This kind of analysis becomes particularly useful when trying to pick a meal plan. Or if you just want to look at your data for fun. Meal plan information can be found <a href="https://dineoncampus.com/UMBC/for-residents">here for residents</a> and <a href="https://dineoncampus.com/UMBC/for-commuters">here for commuters</a>.
+                </p>
+            </div>
 
             <!-- Instructions on how to use the application -->
             <h3>Steps:</h3>
@@ -71,10 +76,10 @@
 
         <!-- Div where all the analytics will be shown after they're calculated -->
         <div class="container" id="analytics" style="display: none;">
-            <h1 class="page-header">
+            <h1 class="page-header mb-3">
                 Meal Breakdown
                 <button style="float: right; margin-top: .5em;" class="btn btn-primary" onclick="reset()">Analyze Another</button>
-            </h1><br>
+            </h1>
 
             <!-- Collapsible panels for times when the person eats -->
             <div class="accordion" id="venueAccordion"></div><br>
@@ -87,7 +92,10 @@
         <!-- Sticky footer -->
         <footer class="footer">
             <div class="container">
-              <span class="text-muted">Created by <a href="https://twitter.com/reesdraminski" target="_blank">Rees Draminski</a>. View code <a href="https://github.com/reesdraminski/meal-breakdown" target="_blank">here</a>.</span>
+                <span class="text-muted">
+                    Created by <a href="https://twitter.com/reesdraminski" target="_blank">Rees Draminski</a>. View code <a href="https://github.com/reesdraminski/meal-breakdown" target="_blank">here</a>.
+                </span>
+              <span class="text-muted">Your data is never saved and is only analyzed on this device.</span>
             </div>
         </footer>
         

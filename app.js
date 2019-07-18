@@ -333,7 +333,7 @@ function analyzeData(csv) {
     }
 
     // Display how many meals the user has eaten
-    $("#venueAccordion").prepend("<h3 id='totalMealsHead'> Total Meals Used: " + totalMeals + "</h3>");
+    $("#venueAccordion").prepend("<h3 id='totalMealsHead' class='mb-3'> Total Meals Used: " + totalMeals + "</h3>");
     
     // for (var meal of data) {
     //     var dateTime = meal[0];
