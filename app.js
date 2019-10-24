@@ -104,70 +104,71 @@ function makeBubbleChart(dataset) {
         .style("height", diameter + "px");
 }
 
-// Constant of restaurants
-var POSSIBLE_VENUES = ["HISSHO", "ADMIN COFFEE", "EINSTEIN BROS BAGELS", "AU BON PAIN", "2. MATO", "SALSARITAS", "MONDO SUBS", "CHIC FIL A", "WILD GREENS", "Pollo", "MASALA", "Fresh Market", "TRUE GRITS"];
-
 /* Parse the CSV and analyze dining data */
 function analyzeData(csv) {
     // Get meals data from CSV to array format
-    var data = Papa.parse(csv);
+    let data = Papa.parse(csv);
     data = data.data;
 
     // Remove the first array element (the data headers)
     data.shift();
+    data.pop();
+
+    console.log(data);
 
     // JSON to store sorted restaurant entries
-    var venues = {
-        "HISSHO": [],
-        "ADMIN COFFEE": [],
-        "AU BON PAIN": [],
-        "EINSTEIN BROS BAGELS": [],
-        "2. MATO": [],
-        "SALSARITAS": [],
-        "MONDO SUBS": [],
-        "CHIC FIL A": [],
-        "WILD GREENS": [],
-        "Pollo": [],
-        "MASALA": [],
-        "Fresh Market": [],
-        "TRUE GRITS": []
-    };
+    let venues = {};
 
     // Go through every single meal in records
-    for (var meal of data) {
-        var mealDateTime = meal[0];
-        var mealVenue = meal[1];
+    for (let meal of data) {
+        let mealDateTime = meal[0];
+        let mealVenue = meal[1];
 
-        // Go through the possible venues and if a match is found, add to the entry list
-        for (var possibleVenue of POSSIBLE_VENUES)
-            if (mealVenue != undefined && mealVenue.includes(possibleVenue))
-                venues[possibleVenue].push(meal);
+        console.log(mealVenue)
+
+        // if meal venue is defined
+        if (mealVenue) {
+            // keep only venue
+            if (mealVenue.includes("2. MATO"))
+                mealVenue = "2.MATO";
+            else
+                mealVenue = mealVenue.substring(0, mealVenue.search("[\\d]") - 1);
+
+            // if meal venue already has an array that is tracking it
+            if (mealVenue in venues)
+                venues[mealVenue].push(meal);
+            // if is first occurence of meal venue
+            else
+                venues[mealVenue] = [meal];
+        }
     }
 
-    var analytics = document.getElementById("analytics");
+    let analytics = document.getElementById("analytics");
 
     // Hide submission and show analytics page
     document.getElementById("submission").style.display = "none";
     analytics.style.display = "";
 
-    var totalMeals = 0;
+    let totalMeals = 0;
 
     // Make collapses for data
-    var numVenues = Object.keys(POSSIBLE_VENUES).length;
+    let numVenues = Object.keys(venues).length;
+    let myVenues = Object.keys(venues);
+
     for (var i = 0; i < numVenues; i++) {
         // Get the venue name to use as a key from possible venues array
-        var venue = POSSIBLE_VENUES[i];
+        let venue = myVenues[i];
 
         // Store venue breakdowns
-        var mealPeriods = { "Breakfast": [], "Lunch": [], "Dinner": [], "Late Night": [] };
-        var weekDays = { "Sunday": [], "Monday": [], "Tuesday": [], "Wednesday": [], "Thursday": [], "Friday": [], "Saturday": [] };
+        let mealPeriods = { "Breakfast": [], "Lunch": [], "Dinner": [], "Late Night": [] };
+        let weekDays = { "Sunday": [], "Monday": [], "Tuesday": [], "Wednesday": [], "Thursday": [], "Friday": [], "Saturday": [] };
 
         // Create card div
-        var card = document.createElement("DIV");
+        let card = document.createElement("DIV");
         card.className = "card";
 
         // Create card header div
-        var cardHeader = document.createElement("DIV");
+        let cardHeader = document.createElement("DIV");
         cardHeader.className = "card-header";
         cardHeader.id = "heading" + i;
         cardHeader.setAttribute("data-toggle", "collapse");
@@ -176,16 +177,16 @@ function analyzeData(csv) {
         cardHeader.setAttribute("aria-controls", "collapse" + i);
 
         // Create title heading for card
-        var heading = document.createElement("H5");
+        let heading = document.createElement("H5");
         heading.className = "mb-0";
 
         // Create button which is the actual text of the card heading
-        var headingButton = document.createElement("BUTTON");
+        let headingButton = document.createElement("BUTTON");
         headingButton.className = "btn btn-link";
         headingButton.innerHTML = venue + ": " + venues[venue].length;
 
         // Create chevron that will be in the card header next to the title
-        var chevron = document.createElement("I");
+        let chevron = document.createElement("I");
         chevron.className = "fa fa-chevron-down";
 
         // Add the heading button and chevron to the header
@@ -196,35 +197,35 @@ function analyzeData(csv) {
         cardHeader.appendChild(heading);
 
         // Create collapse for the card
-        var collapse = document.createElement("DIV");
+        let collapse = document.createElement("DIV");
         collapse.id = "collapse" + i;
         collapse.className = "collapse";
         collapse.setAttribute("aria-labelledby", "heading" + i);
         collapse.setAttribute("data-parent", "#accordion");
 
         // Create card body
-        var cardBody = document.createElement("DIV");
+        let cardBody = document.createElement("DIV");
         cardBody.className = "card-body";
 
         // Create row for the different stat breakdowns
-        var row = document.createElement("DIV");
+        let row = document.createElement("DIV");
         row.className = "row";
 
         // Create column for list of times you've eaten at the venue
-        var listColumn = document.createElement("DIV");
+        let listColumn = document.createElement("DIV");
         listColumn.className = "col-sm-4";
 
         // Create the numbered list of times you've eaten at the venue
-        var list = document.createElement("OL");
+        let list = document.createElement("OL");
 
         // Go through every meal purchase and add to list
-        for (var entry of venues[venue]) {
+        for (let entry of venues[venue]) {
             totalMeals++;
 
             // Split the existing time format
-            var mealDateTime = entry[0];
-            var dateSplit = mealDateTime.split(" ")[0];
-            var timeSplit = mealDateTime.split(" ")[1];
+            let mealDateTime = entry[0];
+            let dateSplit = mealDateTime.split(" ")[0];
+            let timeSplit = mealDateTime.split(" ")[1];
 
             // Breakfast 6am - 10am
             if (timeSplit.includes("AM") && [6, 7, 8, 9, 10].includes(parseInt(timeSplit.split(":")[0])))
