@@ -1,353 +1,318 @@
-/* Add event listeners to toggle the chevrons on collapse changes */
-$(document).ready(function () {
-    // Mobile detection
-    if (navigator.userAgent.indexOf("Mobi") != -1)
-        alert("Are you on a mobile device? This application requires that you download a file, a feature not available on all phones.");
+// Source: https://campuscard.umbc.edu/meal-plans-2/meal-plans/
+const MEAL_EQUIVALENCE = 6.40;
+const DHALL_BREAKFAST = 7.50;
+const DHALL_LUNCH = 10.85;
+const DHALL_DINNER = 11.90;
 
-    // Chevron Toggle 
-    function toggleChevron(e) {
-        $(e.target)
-            .prev(".card-header")
-            .find("i.fa")
-            .toggleClass("rotate-down rotate-up");
-    }
+const app = angular.module("meal-breakdown", ["ngRoute", "chart.js"]);
 
-    // Toggle Chevrons
-    $("#venueAccordion").on("hide.bs.collapse", toggleChevron);
-    $("#venueAccordion").on("show.bs.collapse", toggleChevron);
+/**
+* Handle application routing so that it is all in one page.
+*/
+app.config(["$routeProvider", "$locationProvider", function($routeProvider, $locationProvider) {
+    // don't anything in front of hash
+    $locationProvider.hashPrefix('');
+
+    // handle URL routing as a Single Page Application
+    $routeProvider
+        .when("/", {
+            title: "Meal Breakdown",
+            templateUrl: "templates/home.html",
+            controller: 'HomeCtrl'
+        })
+        .when("/analytics", {
+            title: "Analytics",
+            templateUrl: "templates/analytics.html",
+            controller: 'AnalyticsCtrl'
+        })
+        .otherwise({
+            redirectTo: "/"
+        });
+}]);
+
+/**
+* Display the title based on whatever route it's on.
+*/
+app.run(['$rootScope', function ($rootScope) {
+    // when the route changes
+    $rootScope.$on('$routeChangeSuccess', function (event, current, previous) {
+        // change the page title variable to new route title
+        $rootScope.title = current.$$route.title;
+    });
+}]);
+
+
+/**
+* https://stackoverflow.com/questions/17922557/angularjs-how-to-check-for-changes-in-file-input-fields/17923521#17923521
+*/
+app.directive('customOnChange', function() {
+    return {
+        restrict: 'A',
+        link: function (scope, element, attrs) {
+            let onChangeHandler = scope.$eval(attrs.customOnChange);
+
+            element.on('change', onChangeHandler);
+
+            element.on('$destroy', () => {
+                element.off();
+            });
+        }
+    };
 });
 
-/* Get file contents from a file form field */
-function getFile() {
-    // Get file upload form element
-    var file = document.getElementById('fileUpload');
+/**
+* Handle Home Page logic.
+*/
+app.controller("HomeCtrl", function ($rootScope, $scope, $location) {
+    /**
+    * Upload CSV file and proccess
+    */
+    $scope.uploadFile = (event) => {
+        // get files from change event
+        let files = event.target.files;
 
-    // If the file is defined
-    if (file.files.length) {
-        // Read the file input
-        var reader = new FileReader();
-        reader.readAsBinaryString(file.files[0]);
+        // if there is a file attached to input
+        if (files.length) {
+            // read the file input
+            let reader = new FileReader();
+            reader.readAsBinaryString(files[0]);
 
-        // When the reader load the data
-        reader.onload = function (e) {
-            // Get the data from the event
-            var csv = e.target.result;
+            // TODO Delineate from Flex and Meal Usage
 
-            // Analyze the data
-            analyzeData(csv);
-        };
-    }
-}
+            // when the reader loads the data
+            reader.onload = function (e) {
+                // get the data from the event and convert into JSON
+                $rootScope.csvData = e.target.result;
+                $rootScope.csvData = Papa.parse($rootScope.csvData);
+                $rootScope.csvData = $rootScope.csvData.data;
 
-function reset() {
-    // Reset file
-    document.getElementById('fileUpload').value = "";
-
-    // Show submission and hide analytics
-    document.getElementById("submission").style.display = "";
-    document.getElementById("analytics").style.display = "none";
-}
-
-function makeBubbleChart(dataset) {
-    // Create the D3 Chart
-    var diameter = 1000;
-    var color = d3.scaleOrdinal(d3.schemeCategory10);
-
-    // Create bubble object
-    var bubble = d3.pack(dataset)
-        .size([diameter, diameter])
-        .padding(1.5);
-
-    // Create an svg inside the bubble chart div
-    var svg = d3.select("#bubbleChart")
-        .append("svg")
-        .attr("width", diameter)
-        .attr("height", diameter)
-        .attr("class", "bubble");
-
-    var nodes = d3.hierarchy(dataset)
-        .sum(function (d) { return d.mealCount; });
-
-    var node = svg.selectAll(".node")
-        .data(bubble(nodes).descendants())
-        .enter()
-        .filter(function (d) {
-            return !d.children
-        })
-        .append("g")
-        .attr("class", "node")
-        .attr("transform", function (d) {
-            return "translate(" + d.x + "," + d.y + ")";
-        });
-
-    node.append("title")
-        .text(function (d) {
-            return d.data.venueId + ": " + d.data.mealCount;
-        });
-
-    node.append("circle")
-        .attr("r", function (d) {
-            return d.r;
-        })
-        .style("fill", function (d) {
-            return color(Math.random());
-        });
-
-    node.append("text")
-        .attr("dy", ".3em")
-        .style("text-anchor", "middle")
-        .text(function (d) {
-            return d.data.venueId.substring(0, d.r / 3);
-        });
-
-    d3.select(self.frameElement)
-        .style("height", diameter + "px");
-}
-
-/* Parse the CSV and analyze dining data */
-function analyzeData(csv) {
-    // Get meals data from CSV to array format
-    let data = Papa.parse(csv);
-    data = data.data;
-
-    // Remove the first array element (the data headers)
-    data.shift();
-    data.pop();
-
-    console.log(data);
-
-    // JSON to store sorted restaurant entries
-    let venues = {};
-
-    // Go through every single meal in records
-    for (let meal of data) {
-        let mealDateTime = meal[0];
-        let mealVenue = meal[1];
-
-        console.log(mealVenue)
-
-        // if meal venue is defined
-        if (mealVenue) {
-            // keep only venue
-            if (mealVenue.includes("2. MATO"))
-                mealVenue = "2.MATO";
-            else
-                mealVenue = mealVenue.substring(0, mealVenue.search("[\\d]") - 1);
-
-            // if meal venue already has an array that is tracking it
-            if (mealVenue in venues)
-                venues[mealVenue].push(meal);
-            // if is first occurence of meal venue
-            else
-                venues[mealVenue] = [meal];
+                // remove the first array element (the data headers)
+                $rootScope.csvData.shift();
+                $rootScope.csvData.pop();
+            };
         }
+    };
+
+    /**
+    * Go to the analytics page.
+    */
+    $scope.goToAnalytics = () => {
+        $location.path("/analytics");
+    }
+});
+
+/**
+* Handle Analytics Page logic.
+*/
+app.controller("AnalyticsCtrl", function ($rootScope, $scope, $location) {
+    $scope.venues = {};
+    $scope.totalMeals = 0;
+    $scope.totalCost = 0;
+
+    $scope.chartOptions = {
+        scales: {
+            xAxes: [{
+                ticks: {
+                    beginAtZero: true
+                }
+            }]
+        }
+    };
+
+    $scope.mealPeriods = ['Breakfast', 'Lunch', 'Dinner', 'Late Night', 'N/A'];
+    $scope.daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+    /**
+    * Go to the home page.
+    */
+    $scope.analyzeAnother = () => {
+        $location.path("/");
     }
 
-    let analytics = document.getElementById("analytics");
+    // if csv data is defined
+    if ($rootScope.csvData) {
+        // set start and end date of the data from csv file
+        $scope.startDate = new Date($rootScope.csvData[$rootScope.csvData.length - 1][0].split(" ")[0]);
+        $scope.endDate = new Date($rootScope.csvData[0][0].split(" ")[0]);
 
-    // Hide submission and show analytics page
-    document.getElementById("submission").style.display = "none";
-    analytics.style.display = "";
+        // go through every meal
+        for (let meal of $rootScope.csvData) {
+            let mealDateTime = meal[0];
+            let mealVenue = meal[1];
 
-    let totalMeals = 0;
+            // if meal venue is defined
+            if (mealVenue && !mealVenue.includes("Patron")) {
+                // keep only venue name from csv data
+                if (mealVenue.includes("2. MATO"))
+                    mealVenue = "2.MATO";
+                else
+                    mealVenue = mealVenue.substring(0, mealVenue.search("[\\d]") - 1);
 
-    // Make collapses for data
-    let numVenues = Object.keys(venues).length;
-    let myVenues = Object.keys(venues);
+                // if meal venue already has an array that is tracking it
+                if (mealVenue in $scope.venues)
+                    $scope.venues[mealVenue]["mealData"].push(meal);
+                // if is first occurence of meal venue
+                else {
+                    $scope.venues[mealVenue] = {"mealData": [meal]};
+                    $scope.venues[mealVenue].dayOfWeekBreakdown = [];
+                }
+                    
+                // add to running total of meals used
+                $scope.totalMeals++;
 
-    for (var i = 0; i < numVenues; i++) {
-        // Get the venue name to use as a key from possible venues array
-        let venue = myVenues[i];
+                // get meal period of swipe
+                let timeSplit = mealDateTime.split(" ")[1];
+                let mealPeriod = getMealPeriod(timeSplit);
 
-        // Store venue breakdowns
-        let mealPeriods = { "Breakfast": [], "Lunch": [], "Dinner": [], "Late Night": [] };
-        let weekDays = { "Sunday": [], "Monday": [], "Tuesday": [], "Wednesday": [], "Thursday": [], "Friday": [], "Saturday": [] };
+                // keep track of total venue meal swipes during particular meal period
+                if (mealPeriod in $scope.venues[mealVenue])
+                    $scope.venues[mealVenue][mealPeriod]++;
+                else
+                    $scope.venues[mealVenue][mealPeriod] = 1;
 
-        // Create card div
-        let card = document.createElement("DIV");
-        card.className = "card";
+                // keep track of total venue meanl swipes on particular day of week
+                let day = new Date(mealDateTime.split(" ")[0]).getDay();
+                if ($scope.venues[mealVenue].dayOfWeekBreakdown[day])
+                    $scope.venues[mealVenue].dayOfWeekBreakdown[day]++;
+                else 
+                    $scope.venues[mealVenue].dayOfWeekBreakdown[day] = 1;
 
-        // Create card header div
-        let cardHeader = document.createElement("DIV");
-        cardHeader.className = "card-header";
-        cardHeader.id = "heading" + i;
-        cardHeader.setAttribute("data-toggle", "collapse");
-        cardHeader.setAttribute("data-target", "#collapse" + i);
-        cardHeader.setAttribute("aria-expanded", "false");
-        cardHeader.setAttribute("aria-controls", "collapse" + i);
+                // if ($scope.venues[mealVenue].dayOfWeekBreakdown[$scope.daysOfWeek[day]][mealPeriod])
+                //     $scope.venues[mealVenue].dayOfWeekBreakdown[$scope.daysOfWeek[day]][mealPeriod]++;
+                // else
+                //     $scope.venues[mealVenue].dayOfWeekBreakdown[$scope.daysOfWeek[day]][mealPeriod] = 1
 
-        // Create title heading for card
-        let heading = document.createElement("H5");
-        heading.className = "mb-0";
+                // if the venue doesn't have a total sum yet
+                if (!$scope.venues[mealVenue].venueTotal)
+                    $scope.venues[mealVenue].venueTotal = 0;
 
-        // Create button which is the actual text of the card heading
-        let headingButton = document.createElement("BUTTON");
-        headingButton.className = "btn btn-link";
-        headingButton.innerHTML = venue + ": " + venues[venue].length;
-
-        // Create chevron that will be in the card header next to the title
-        let chevron = document.createElement("I");
-        chevron.className = "fa fa-chevron-down";
-
-        // Add the heading button and chevron to the header
-        heading.appendChild(headingButton);
-        heading.appendChild(chevron);
-
-        // Add the heading to the card header
-        cardHeader.appendChild(heading);
-
-        // Create collapse for the card
-        let collapse = document.createElement("DIV");
-        collapse.id = "collapse" + i;
-        collapse.className = "collapse";
-        collapse.setAttribute("aria-labelledby", "heading" + i);
-        collapse.setAttribute("data-parent", "#accordion");
-
-        // Create card body
-        let cardBody = document.createElement("DIV");
-        cardBody.className = "card-body";
-
-        // Create row for the different stat breakdowns
-        let row = document.createElement("DIV");
-        row.className = "row";
-
-        // Create column for list of times you've eaten at the venue
-        let listColumn = document.createElement("DIV");
-        listColumn.className = "col-sm-4";
-
-        // Create the numbered list of times you've eaten at the venue
-        let list = document.createElement("OL");
-
-        // Go through every meal purchase and add to list
-        for (let entry of venues[venue]) {
-            totalMeals++;
-
-            // Split the existing time format
-            let mealDateTime = entry[0];
-            let dateSplit = mealDateTime.split(" ")[0];
-            let timeSplit = mealDateTime.split(" ")[1];
-
-            // Breakfast 6am - 10am
-            if (timeSplit.includes("AM") && [6, 7, 8, 9, 10].includes(parseInt(timeSplit.split(":")[0])))
-                mealPeriods["Breakfast"].push(entry);
-            // Lunch 11am - 2pm
-            else if ((timeSplit.includes("AM") && parseInt(timeSplit.split(":")[0]) == 11)
-                || (timeSplit.includes("PM") && [12, 1, 2].includes(parseInt(timeSplit.split(":")[0]))))
-                mealPeriods["Lunch"].push(entry);
-            // If time is after noon and after 4pm and before 8pm it is dinner
-            else if ((timeSplit.includes("PM")) && [4, 5, 6, 7, 8].includes(parseInt(timeSplit.split(":")[0])))
-                mealPeriods["Dinner"].push(entry);
-            // Otherwise it is late night
-            else if ((timeSplit.includes("PM") && [9, 10, 11].includes(parseInt(timeSplit.split(":")[0])))
-                || (timeSplit.includes("AM") && [12, 1, 2].includes(parseInt(timeSplit.split(":")[0]))))
-                mealPeriods["Late Night"].push(entry)
-
-            // Convert the date to moment object
-            var finalDate = moment(dateSplit);
-
-            // Add hours and strip AM/PM
-            var hours = parseInt(timeSplit.split(":")[0]);
-            if (timeSplit.includes("PM")) {
-                // Add 12 hours since its PM
-                if (hours != 12) hours += 12;
-
-                timeSplit.replace("PM", "");
+                // if dhall, use cost equivalency depending on meal period
+                if (mealVenue == "TRUE GRITS") {
+                    switch (mealPeriod) {
+                        case "Breakfast":
+                            $scope.totalCost += DHALL_BREAKFAST;
+                            $scope.venues[mealVenue].venueTotal += DHALL_BREAKFAST;
+                            break;
+                        case "Lunch":
+                            $scope.totalCost += DHALL_LUNCH;
+                            $scope.venues[mealVenue].venueTotal += DHALL_LUNCH;
+                            break;
+                        case "Dinner":
+                            $scope.totalCost += DHALL_DINNER;
+                            $scope.venues[mealVenue].venueTotal += DHALL_DINNER;
+                            break;
+                        case "Late Night":
+                            $scope.totalCost += MEAL_EQUIVALENCE;
+                            $scope.venues[mealVenue].venueTotal += MEAL_EQUIVALENCE;
+                            break;
+                    }
+                }
+                // if other venue, just use meal equivalence from campus card
+                else {
+                    $scope.totalCost += MEAL_EQUIVALENCE;
+                    $scope.venues[mealVenue].venueTotal += MEAL_EQUIVALENCE;
+                }
             }
-            else
-                timeSplit.replace("AM", "");
 
-            // Get minutes
-            var minutes = parseInt(timeSplit.split(":")[1]);
-
-            // Add the hour and minutes to the date
-            finalDate = moment(finalDate).add(hours, "hours");
-            finalDate = moment(finalDate).add(minutes, "minutes");
-
-            // Add the formatted date to the card
-            var dateOutputString = moment(finalDate).format("dddd, MMMM Do, YYYY - h:mma");
-
-            // Get the weekday
-            var weekDay = dateOutputString.split(",")[0];
-            weekDays[weekDay].push(entry);
-
-            // Add list item to list
-            var listItem = document.createElement("LI");
-            listItem.innerHTML = dateOutputString;
-            list.appendChild(listItem);
+            console.log($scope.venues)
         }
 
-        // Add list to list column
-        listColumn.appendChild(list);
+        // Format data for d3
+        let dataset = { "children": [] };
+        $scope.venueTotals = [];
 
-        // Create column to hold meal period stat breakdown
-        var mealPeriodColumn = document.createElement("DIV");
-        mealPeriodColumn.className = "col-sm-4";
+        for (let venue in $scope.venues) {
+            // push children nodes into dataset for bubbleChart
+            dataset.children.push({ "venueId": venue, mealCount: $scope.venues[venue].mealData.length });
 
-        // Add meal period breakdown stats
-        for (var mealPeriod in mealPeriods) {
-            var mealPeriodHeading = document.createElement("H5");
-
-            if (mealPeriods[mealPeriod].length > 0)
-                mealPeriodHeading.innerHTML = mealPeriod + ": " + mealPeriods[mealPeriod].length + " (" + ((mealPeriods[mealPeriod].length / venues[venue].length) * 100).toFixed(1) + "%)";
-            else
-                mealPeriodHeading.innerHTML = mealPeriod + ": 0 (0%)";
-
-            mealPeriodColumn.appendChild(mealPeriodHeading);
+            // compile all the venue meal period totals into one array
+            $scope.venues[venue].mealPeriodBreakdown = [
+                $scope.venues[venue]["Breakfast"] || 0,
+                $scope.venues[venue]["Lunch"] || 0,
+                $scope.venues[venue]["Dinner"] || 0,
+                $scope.venues[venue]["Late Night"] || 0,
+                $scope.venues[venue]["N/A"] || 0,
+            ];
         }
 
-        // Create column to hold weekday stat breakdown
-        var weekDayColumn = document.createElement("DIV");
-        weekDayColumn.className = "col-sm-4";
+        makeBubbleChart(dataset);
+    };
 
-        // Add week day breakdown stats
-        for (var weekDay in weekDays) {
-            var weekDayHeading = document.createElement("H5");
-
-            if (weekDays[weekDay].length > 0)
-                weekDayHeading.innerHTML = weekDay + ": " + weekDays[weekDay].length + " (" + ((weekDays[weekDay].length / venues[venue].length) * 100).toFixed(1) + "%)";
-            else
-                weekDayHeading.innerHTML = weekDay + ": 0 (0%)";
-
-            weekDayColumn.appendChild(weekDayHeading);
-        }
-
-        // Add columns to the row
-        row.appendChild(listColumn);
-        row.appendChild(mealPeriodColumn);
-        row.appendChild(weekDayColumn);
-
-        // Add the row to the card body
-        cardBody.appendChild(row);
-
-        // Add the card header 
-        card.appendChild(cardHeader);
-
-        // Add card body into collapse and add to card
-        collapse.appendChild(cardBody);
-        card.appendChild(collapse);
-
-        // Add the card into the collapse
-        card.appendChild(collapse);
-
-        // Add the collapse into the accordion
-        document.getElementById("venueAccordion").appendChild(card);
+    // TODO Switch this logic to moment code
+    function getMealPeriod(timeSplit) {
+        // Breakfast 6am - 10am
+        if (timeSplit.includes("AM") && [6, 7, 8, 9, 10].includes(parseInt(timeSplit.split(":")[0])))
+            return "Breakfast";
+        // Lunch 11am - 4pm
+        else if ((timeSplit.includes("AM") && parseInt(timeSplit.split(":")[0]) == 11)
+            || (timeSplit.includes("PM") && [12, 1, 2, 3, 4].includes(parseInt(timeSplit.split(":")[0]))))
+            return "Lunch";
+        // If time is after noon and after 4pm and before 8pm it is dinner
+        else if ((timeSplit.includes("PM")) && [4, 5, 6, 7, 8].includes(parseInt(timeSplit.split(":")[0])))
+            return "Dinner"
+        // Otherwise it is late night
+        else if ((timeSplit.includes("PM") && [9, 10, 11].includes(parseInt(timeSplit.split(":")[0])))
+            || (timeSplit.includes("AM") && [12, 1, 2].includes(parseInt(timeSplit.split(":")[0]))))
+            return "Late Night";
+        else
+            return "N/A";
     }
 
-    // Display how many meals the user has eaten
-    $("#venueAccordion").prepend("<h3 id='totalMealsHead' class='mb-3'> Total Meals Used: " + totalMeals + "</h3>");
-    
-    // for (var meal of data) {
-    //     var dateTime = meal[0];
+    function makeBubbleChart(dataset) {
+        document.getElementById("bubbleChart").innerHTML = "";
 
-    //     if (dateTime) {
-    //         console.log(moment(dateTime));
-    //     }
-    // }
+        // Create the D3 Chart
+        let diameter = 1000;
+        let color = d3.scaleOrdinal(d3.schemeCategory10);
 
-    // Format data for d3
-    var dataset = { "children": [] };
-    for (var venue in venues)
-        dataset.children.push({ "venueId": venue, mealCount: venues[venue].length });
+        // Create bubble object
+        let bubble = d3.pack(dataset)
+            .size([window.innerWidth, diameter])
+            .padding(1.5);
 
-    makeBubbleChart(dataset);
-}
+        // Create an svg inside the bubble chart div
+        let svg = d3.select("#bubbleChart")
+            .append("svg")
+            .attr("width", window.innerWidth)
+            .attr("height", diameter)
+            .attr("class", "bubble");
+
+        let nodes = d3.hierarchy(dataset)
+            .sum(function (d) { return d.mealCount; });
+
+        let node = svg.selectAll(".node")
+            .data(bubble(nodes).descendants())
+            .enter()
+            .filter(function (d) {
+                return !d.children
+            })
+            .append("g")
+            .attr("class", "node")
+            .attr("transform", function (d) {   
+                return "translate(" + d.x + "," + d.y + ")";
+            });
+
+        node.append("title")
+            .text(function (d) {
+                return d.data.venueId + ": " + d.data.mealCount;
+            });
+
+        node.append("circle")
+            .attr("r", function (d) {
+                return d.r;
+            })
+            .style("fill", function (d) {
+                return color(Math.random());
+            });
+
+        node.append("text")
+            .attr("dy", ".3em")
+            .style("text-anchor", "middle")
+            .text(function (d) {
+                return d.data.venueId.substring(0, d.r / 3);
+            });
+
+        d3.select(self.frameElement)
+            .style("height", diameter + "px");
+    }
+});

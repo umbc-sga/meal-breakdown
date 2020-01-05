@@ -1,0 +1,61 @@
+<h1 class="page-header mb-3">
+    Meal Breakdown
+    <button style="float: right; margin-top: .5em;" class="btn btn-primary" ng-click="analyzeAnother()">Analyze Another</button>
+</h1>
+
+<label for="startDate"><b>Start Date:</b></label>
+<input ng-model="startDate" type="date">
+            
+<label for="endDate"><b>End Date:</b></label>
+<input ng-model="endDate" type="date">
+
+<h3 class='mb-3'>Money Spent: ${{totalCost.toFixed(2) | number}}</h3>
+<h3 class='mb-3'>Total Meals Used: {{totalMeals}}</h3>
+
+<div class="accordion mt-2" id="venueAccordion">
+    <div class="card" ng-repeat="(key, value) in venues track by $index">
+        <div id="heading{{$index}}" class="card-header" data-toggle="collapse" 
+            data-target="#collapse{{$index}}" aria-expanded="false" aria-controls="collapse{{$index}}">
+            <h5 class="mb-0">
+                <button class="btn btn-link">
+                    {{key}}: {{venues[key].mealData.length}} Swipes, ${{venues[key].venueTotal.toFixed(2)}} Spent
+                </button>
+                
+                <i class="fa fa-chevron-down"></i>
+            </h5>
+        </div>
+
+        <div id="collapse{{$index}}" class="collapse" aria-labelledby="heading{{$index}}" data-parent="#accordion">
+            <div class="card-body row">
+                <div class="col-sm-3">
+                    <h5 class="mb-0">Swipe Times</h5>
+                    <ol>
+                        <li ng-repeat="meal in venues[key].mealData">
+                            {{meal[0]}}
+                        </li>
+                    </ol>
+                </div>
+
+                <div class="col-sm-4">
+                    <h5 class="mb-0">Meal Period Swipe Breakdown</h5>
+                    <canvas id="pie" class="chart chart-pie" chart-data="venues[key].mealPeriodBreakdown" 
+                            chart-labels="mealPeriods">
+                    </canvas> 
+                </div>
+
+                <div class="col-sm-5">
+                    <h5 class="mb-0">Day of Week Swipe Breakdown</h5>
+                    <canvas id="base" class="chart-horizontal-bar"
+                            chart-data="venues[key].dayOfWeekBreakdown" chart-labels="daysOfWeek"
+                            chart-options="chartOptions">
+                    </canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<br>
+
+<!-- Bubble chart for eating venue visualization -->
+<h3>Data Visualization:</h3>
+<div id="bubbleChart"></div>
